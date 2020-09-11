@@ -1,4 +1,4 @@
-select valid_etime,id from t
-	where id > 10 or (price+2 = 100) and (valid_etime/2 > "2020-10-01" or id = 10 and price < 10)
-	order by id,price desc
-	limit 0,10
+select *,valid_etime,id from t
+where  name ='张三' or a = 1 and b = 2
+order by id desc,name asc
+limit 10,20

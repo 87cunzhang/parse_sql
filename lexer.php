@@ -7,7 +7,7 @@
 
 class Lexer
 {
-    private $input; // 输入的字符串
+    private $input; // 要解析的sql
 
     private $pos = -1;  // point to c char
 
@@ -17,7 +17,7 @@ class Lexer
 
     const EOF = -1;
 
-    const KEYWORDS = ['p','set','function'];
+    const KEYWORDS = ['select', 'from', 'where', 'or', 'and', 'order', 'by', 'act', 'desc', 'limit'];
 
     public function __construct(string $input)
     {
@@ -37,34 +37,44 @@ class Lexer
             case '/':
             case '(':
             case ')':
-            case '{':
-            case '}':
-            case '@':
+            case '<':
+            case '>':
+            case ',':
                 $token = $this->makeToken($this->c, $this->c);
                 $this->readChar();
+                break;
+            case "'":
+                //匹配单引号字符串
+                $token = $this->makeToken('str', $this->matchSingleQuotationStr());
+                break;
+            case '"':
+                //匹配双引号字符串
+                $token = $this->makeToken('str', $this->matchDoubleQuotationStr());
+                break;
+            case '`':
+                //匹配双引号字符串
+                $token = $this->makeToken('id', $this->matchbackQuotationStr());
                 break;
             case self::EOF:
                 $token = $this->makeToken('eof', $this->c);
                 $this->readChar();
                 break;
-            case '"':
-                $token= $this->makeToken('str', $this->matchStr());
-                break;
             default:
-                //匹配变量名和关键字
+                //匹配关键字和id
                 if ($this->isLiteral($this->c)) {
-                    $literal  = $this->matchLiteral();
-                    $type = 'name';
-                    if(in_array($literal,self::KEYWORDS)){
+                    $literal = $this->matchLiteral();
+                    $type    = 'id';
+                    if (in_array($literal, self::KEYWORDS)) {
                         $type = $literal;
                     }
                     $token = $this->makeToken($type, $literal);
                     break;
                 } elseif ($this->isNum($this->c)) {
+                    //匹配数字
                     $token = $this->makeToken('num', $this->matchNumber());
                     break;
                 }
-                throw new Exception('格式错误');
+                throw new Exception('格式错误,now the char is ' . +$this->c);
         }
 
         return $token;
@@ -72,7 +82,7 @@ class Lexer
 
     private function isLiteral($char)
     {
-        return preg_match('#^[a-zA-Z_]$#', $char);
+        return preg_match('#[a-zA-Z_][a-zA-Z_0-9]*#', $char);
     }
 
     private function isNum($char)
@@ -80,7 +90,23 @@ class Lexer
         return preg_match('#^\d$#', $char);
     }
 
-    private function matchStr()
+    //匹配单引号字符串
+    private function matchSingleQuotationStr()
+    {
+        //指针后移,跳过起始的单引号
+        $this->readChar();
+        $str = '';
+
+        while ($this->c != "'" && $this->c != self::EOF) {
+            $str .= $this->c;
+            $this->readChar();
+        }
+        $this->expectChar("'");
+        return $str;
+    }
+
+    //匹配双引号字符串
+    private function matchDoubleQuotationStr()
     {
         //指针后移,跳过起始的双引号
         $this->readChar();
@@ -90,15 +116,30 @@ class Lexer
             $str .= $this->c;
             $this->readChar();
         }
-        $this->expectChar();
+        $this->expectChar('"');
+        return $str;
+    }
+
+    //匹配`
+    private function matchbackQuotationStr()
+    {
+        //指针后移,跳过起始的`
+        $this->readChar();
+        $str = '';
+
+        while ($this->c != "`" && $this->c != self::EOF) {
+            $str .= $this->c;
+            $this->readChar();
+        }
+        $this->expectChar("`");
         return $str;
     }
 
     // 期望拿到什么字符
-    private function expectChar()
+    private function expectChar($char)
     {
-        if ($this->c != '"') {
-            throw new Exception('双引号未闭合');
+        if ($this->c != $char) {
+            throw new Exception("expect $char but $this->c give");
         }
         $this->readChar();
     }
