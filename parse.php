@@ -25,51 +25,16 @@ class Parser
         $this->nextToken();
     }
 
-    public function buildAst()
-    {
-        while ($this->curTokenType() != 'eof') {
-            $this->parse();
-        }
-    }
-
     //生成ast
-    public function parse()
+    public function parseSql()
     {
         $ast = [];
-        $this->expectToken('select');
         $ast[] = $this->parseSelect();
         $this->parseFrom();
         $ast[] = $this->parseWhere();
         $ast[] = $this->parseOrder();
-
-
-        var_dump($ast[2]);
-        die;
-        switch ($this->curTokenType()) {
-            case 'select':
-                //获取字段
-                $this->parseSelect();
-                break;
-            case 'from':
-                //表名,直接跳过
-                $this->nextToken(2);
-                break;
-            case 'where':
-                $this->parseWhere();
-                break;
-            case 'order':
-                $this->parseOrder();
-                break;
-            case 'limit':
-                $this->parseLimit();
-                break;
-            case 'eof':
-                break;
-            default:
-                throw new Exception('parse error now the token is ' . $this->curTokenLiteral());
-                break;
-        }
-        return $this->ast;
+        $ast[] = $this->parseLimit();
+        return $ast[1];
     }
 
 
@@ -79,6 +44,7 @@ class Parser
             'kind'  => 'select',
             'child' => []
         ];
+        $this->expectToken('select');
         $this->nextToken();//skip select
         if ($this->curTokenType() == '*') {
             $selectAst['child'][] = $this->parseStar();
@@ -110,9 +76,14 @@ class Parser
         if ($this->curTokenLiteral() != 'where') {
             return [];
         }
+        $whereAst = [
+            'kind'  => 'where',
+            'child' => []
+        ];
 
         $this->nextToken();//skip where
-        return $this->parseExpr(0);
+        $whereAst['child'] = $this->parseExpr(0);
+        return $whereAst;
     }
 
 
@@ -151,15 +122,14 @@ class Parser
             }
         }
 
-        if(in_array($this->curTokenLiteral(), ['asc', 'desc'])){
+        if (in_array($this->curTokenLiteral(), ['asc', 'desc'])) {
             $subOrderAst['attr'] = $this->curTokenLiteral();
             $this->nextToken(); //skip ast or desc
-        }
-        else{
+        } else {
             $subOrderAst['attr'] = 'ast';
         }
 
-        if($this->curTokenLiteral() == ','){
+        if ($this->curTokenLiteral() == ',') {
             $this->nextToken();
         }
 
@@ -173,6 +143,23 @@ class Parser
         if ($this->curTokenLiteral() != 'limit') {
             return [];
         }
+
+        $limitAst = [
+            'kind'  => 'limit',
+            'child' => []
+        ];
+
+        $this->nextToken();//skip limit
+        $this->expectTokenType('num');
+        $limitAst['child'][] = $this->parseNumber();
+        $this->nextToken();
+        if ($this->curTokenLiteral() == ',') {
+            $this->nextToken(); //skip ,
+            $this->expectTokenType('num');
+            $limitAst['child'][] = $this->parseNumber();
+            $this->nextToken();
+        }
+        return $limitAst;
     }
 
 
@@ -225,25 +212,6 @@ class Parser
         return $precedences[$this->curTokenLiteral()] ?? 0;
     }
 
-    private function makeChild($type, $value)
-    {
-        $child['type']  = $type;
-        $child['child'] = $value;
-        return $child;
-    }
-
-
-    public function getNum()
-    {
-        $this->nextToken();
-        if ($this->curTokenType() == 'num') {
-            $num = $this->curTokenLiteral();
-        } else {
-            throw new Exception('数字格式错误');
-        }
-        return $num;
-    }
-
     private function curTokenType()
     {
         return $this->curToken['type'];
@@ -252,11 +220,6 @@ class Parser
     private function curTokenLiteral()
     {
         return $this->curToken['literal'];
-    }
-
-    private function curTokenIs($tokenType)
-    {
-        return $this->curTokenType() == $tokenType;
     }
 
 

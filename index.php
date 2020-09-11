@@ -15,6 +15,5 @@ $lexer = new Lexer($sql);
 //    var_dump($token);
 //}
 $parser = new Parser($lexer);
-$ast = $parser->buildAst();
+$ast = $parser->parseSql();
 var_dump($ast);
-//echo json_encode($ast[1]);
