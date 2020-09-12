@@ -5,7 +5,8 @@
  * Time: 15:12
  */
 include_once('lexer.php');
-include_once('parse.php');
+include_once('parser.php');
+include_once('_eval.php');
 $file = $argv[1] ?? 'select.sql';
 $sql  = file_get_contents($file);
 $lexer = new Lexer($sql);
@@ -16,4 +17,8 @@ $lexer = new Lexer($sql);
 //}
 $parser = new Parser($lexer);
 $ast = $parser->parseSql();
-var_dump($ast);
+
+$_eval = new _Eval($ast);
+
+$result = $_eval -> _eval();
+var_dump($result);

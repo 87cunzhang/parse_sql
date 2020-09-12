@@ -34,7 +34,7 @@ class Parser
         $ast[] = $this->parseWhere();
         $ast[] = $this->parseOrder();
         $ast[] = $this->parseLimit();
-        return $ast[1];
+        return $ast;
     }
 
 
@@ -255,25 +255,25 @@ class Parser
     private function parseId()
     {
         $this->expectTokenType('id');
-        return ['type' => 'id', 'attr' => $this->curTokenLiteral()];
+        return ['kind' => 'id', 'child' => $this->curTokenLiteral()];
     }
 
     private function parseStar()
     {
         $this->expectTokenType('*');
-        return ['type' => '*', 'attr' => $this->curTokenLiteral()];
+        return ['kind' => '*', 'child' => $this->curTokenLiteral()];
     }
 
     private function parseNumber()
     {
         $this->expectTokenType('num');
-        return ['type' => 'num', 'attr' => $this->curTokenLiteral()];
+        return ['kind' => 'num', 'child' => $this->curTokenLiteral()];
     }
 
     private function parseString()
     {
         $this->expectTokenType('str');
-        return ['type' => 'str', 'attr' => $this->curTokenLiteral()];
+        return ['kind' => 'str', 'child' => $this->curTokenLiteral()];
     }
 
     //解析括号
