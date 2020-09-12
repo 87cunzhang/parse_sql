@@ -17,6 +17,11 @@ class _Eval
         ['num' => 3, 'name' => '王二', 'code' => 10],
     ];
 
+    const SORT_FLAG = [
+        'ast'  => SORT_ASC,
+        'desc' => SORT_DESC
+    ];
+
     public function __construct($ast)
     {
         $this->ast = $ast;
@@ -31,38 +36,96 @@ class _Eval
         return $this->result;
     }
 
-    private function evalOrder()
+
+    /**
+     * 获取符合要求的记录
+     */
+    private function filterData()
     {
-        $orderAst = $this->ast[2];
-        if (!$orderAst) {
-            return;
-        }
-        $result = $this->result;
-        foreach ($orderAst['child'] as $subOrder) {
-            foreach ($subOrder['child'] as $id) {
-                $column_id = array_column($result,$id['child']);
-                $sort_flag_arr = self::SORT_FLAG;
-                $sort_flag = $sort_flag_arr[$subOrder['attr']];
-                array_multisort($column_id,$sort_flag,$result);
+        $result   = [];
+        $data     = $this->data;
+        $whereAst = $this->ast[1];
+
+        if (!$whereAst) {
+            $result = $data;
+        } else {
+
+            foreach ($data as $item) {
+
+                if ((bool)$this->filterItem($item, $whereAst['child'])) {
+                    $result[] = $item;
+                }
+
             }
+
         }
+
         $this->result = $result;
     }
 
-    const SORT_FLAG = [
-        'ast'  => SORT_ASC,
-        'desc' => SORT_DESC
-    ];
+    private function evalSelect()
+    {
+        $result    = $this->result;
+        $selectAst = $this->ast[0];
+        //要筛选的key
+        $selectKeys = array_column($selectAst['child'], 'child');
+
+        if (!$result || in_array('*', $selectKeys)) {
+            return;
+        }
+
+        //所有key
+        $allKeys = array_keys($result[0]);
+        //要消除的key
+        $unsetKeys = array_diff($allKeys, $selectKeys);
+
+        foreach ($result as &$item) {
+
+            foreach ($unsetKeys as $key) {
+                unset($item[$key]);
+            }
+
+        }
+
+        $this->result = $result;
+    }
+
+    private function evalOrder()
+    {
+        $orderAst = $this->ast[2];
+
+        if (!$orderAst) {
+            return;
+        }
+
+        $result = $this->result;
+
+        foreach ($orderAst['child'] as $subOrder) {
+
+            foreach ($subOrder['child'] as $id) {
+                $column_id     = array_column($result, $id['child']);
+                $sort_flag_arr = self::SORT_FLAG;
+                $sort_flag     = $sort_flag_arr[$subOrder['attr']];
+                array_multisort($column_id, $sort_flag, $result);
+            }
+
+        }
+
+        $this->result = $result;
+    }
+
 
     private function evalLimit()
     {
         $limitAst = $this->ast[3];
+
         if (!$limitAst) {
             return;
         }
 
         $result      = $this->result;
         $limitResult = [];
+
         if (count($limitAst['child']) == 1) {
             $offset   = 0;
             $pageSize = $limitAst['child'][0]['child'];
@@ -72,62 +135,15 @@ class _Eval
         }
 
         foreach ($result as $key => $item) {
+
             if ($key >= $offset && $key < $offset + $pageSize) {
                 $limitResult[] = $item;
             }
+
         }
 
         $this->result = $limitResult;
 
-    }
-
-    private function evalSelect()
-    {
-        $result    = $this->result;
-        $selectAst = $this->ast[0];
-        //要筛选的key
-        $selectKeys = array_column($selectAst['child'], 'child');
-        if (!$result || in_array('*', $selectKeys)) {
-            return;
-        }
-        //所有key
-        $allKeys = array_keys($result[0]);
-        //要消除的key
-        $unsetKeys = array_diff($allKeys, $selectKeys);
-        foreach ($result as &$item) {
-            foreach ($unsetKeys as $key) {
-                unset($item[$key]);
-            }
-        }
-        $this->result = $result;
-    }
-
-    private function orderBy()
-    {
-        $filterData = $this->filterData();
-        var_dump($filterData);
-        die;
-    }
-
-    /**
-     * 获取符合要求的记录
-     * @return array
-     */
-    private function filterData()
-    {
-        $result   = [];
-        $data     = $this->data;
-        $whereAst = $this->ast[1];
-        if (!$whereAst) {
-            $result = $data;
-        } else {
-            foreach ($data as $item) {
-                if ((bool)$this->filterItem($item, $whereAst['child'])) {
-                    $result[] = $item;
-                }
-            }
-        }
-        $this->result = $result;
     }
 
 

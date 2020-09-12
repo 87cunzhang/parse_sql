@@ -28,7 +28,7 @@ class Parser
     //生成ast
     public function parseSql()
     {
-        $ast = [];
+        $ast   = [];
         $ast[] = $this->parseSelect();
         $this->parseFrom();
         $ast[] = $this->parseWhere();
@@ -46,11 +46,14 @@ class Parser
         ];
         $this->expectToken('select');
         $this->nextToken();//skip select
+
         if ($this->curTokenType() == '*') {
             $selectAst['child'][] = $this->parseStar();
             $this->nextToken();
         }
+
         while ($this->curTokenType() != 'from') {
+
             if ($this->curTokenType() == ',') {
                 $this->nextToken();
             } elseif ($this->curTokenType() == 'id') {
@@ -59,7 +62,9 @@ class Parser
             } else {
                 $this->throwError('select fields error');
             }
+
         }
+
         return $selectAst;
     }
 
@@ -76,6 +81,7 @@ class Parser
         if ($this->curTokenLiteral() != 'where') {
             return [];
         }
+
         $whereAst = [
             'kind'  => 'where',
             'child' => []
@@ -92,6 +98,7 @@ class Parser
         if ($this->curTokenLiteral() != 'order') {
             return [];
         }
+
         $this->expectToken('order');
         $this->nextToken();//skip order;
         $this->expectToken('by');
@@ -100,9 +107,11 @@ class Parser
             'kind'  => 'order',
             'child' => []
         ];
+
         while (!in_array($this->curTokenType(), self::KEYWORDS)) {
             $orderAst['child'][] = $this->parseSubOrder();
         }
+
         return $orderAst;
     }
 
@@ -113,13 +122,16 @@ class Parser
             'attr'  => '',
             'child' => []
         ];
+
         while (!in_array($this->curTokenType(), ['asc', 'desc']) && !in_array($this->curTokenType(), self::KEYWORDS)) {
+
             if ($this->curTokenType() == 'id') {
                 $subOrderAst['child'][] = $this->parseId();
                 $this->nextToken();
             } elseif ($this->curTokenType() == ',') {
                 $this->nextToken();
             }
+
         }
 
         if (in_array($this->curTokenLiteral(), ['asc', 'desc'])) {
@@ -148,17 +160,18 @@ class Parser
             'kind'  => 'limit',
             'child' => []
         ];
-
         $this->nextToken();//skip limit
         $this->expectTokenType('num');
         $limitAst['child'][] = $this->parseNumber();
         $this->nextToken();
+
         if ($this->curTokenLiteral() == ',') {
             $this->nextToken(); //skip ,
             $this->expectTokenType('num');
             $limitAst['child'][] = $this->parseNumber();
             $this->nextToken();
         }
+
         return $limitAst;
     }
 
@@ -166,6 +179,7 @@ class Parser
     private function parseExpr($precedence)
     {
         $left = '';
+
         if ($this->curTokenType() == 'num') {
             $left = $this->parseNumber();
         } elseif ($this->curTokenType() == 'str') {
@@ -177,11 +191,14 @@ class Parser
         } else {
             $this->throwError('token type error ,now the type is' . $this->curTokenType());
         }
+
         $this->nextToken();
+
         //遇到下一个关键字停止
         while (!in_array($this->curTokenLiteral(), self::KEYWORDS) && $precedence < $this->curPrecedence()) {
             $left = $this->parseInfixExpr($left);
         }
+
         return $left;
     }
 
@@ -208,7 +225,6 @@ class Parser
             '*'   => 500,
             '/'   => 500
         ];
-
         return $precedences[$this->curTokenLiteral()] ?? 0;
     }
 
@@ -222,7 +238,6 @@ class Parser
         return $this->curToken['literal'];
     }
 
-
     private function nextToken($skipNum = 1)
     {
         for ($i = 0; $i < $skipNum; $i++) {
@@ -234,6 +249,7 @@ class Parser
     private function expectToken($expectToken)
     {
         $curToken = $this->curTokenLiteral();
+
         if ($curToken != $expectToken) {
             $this->throwError('expect token ' . $expectToken . ',but ' . $curToken . ' given');
         }
@@ -242,6 +258,7 @@ class Parser
     private function expectTokenType($expectTokenType)
     {
         $curTokenType = $this->curTokenType();
+
         if ($curTokenType != $expectTokenType) {
             $this->throwError('expect token ' . $expectTokenType . ',but ' . $curTokenType . ' given');
         }
